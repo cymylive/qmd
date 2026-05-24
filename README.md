@@ -1,3 +1,7 @@
+<p align="center">
+  <b>English</b> | <a href="README_zh.md">中文</a>
+</p>
+
 # QMD - Query Markup Documents
 
 An on-device search engine for everything you need to remember. Index your markdown notes, meeting transcripts, documentation, and knowledge bases. Search with keywords or natural language. Ideal for your agentic flows.
