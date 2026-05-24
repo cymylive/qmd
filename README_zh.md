@@ -4,439 +4,384 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tobi/qmd/main/assets/qmd-architecture.png">
-    <img alt="QMD Architecture" src="https://raw.githubusercontent.com/tobi/qmd/main/assets/qmd-architecture.png" width="600">
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/CloakHQ/CloakBrowser/raw/main/images/logo.png">
+    <img alt="CloakBrowser" src="https://github.com/CloakHQ/CloakBrowser/raw/main/images/logo.png" width="400">
   </picture>
 </p>
 
-# QMD — 本地文档搜索引擎
+# CloakBrowser — 隐形 Chromium 浏览器
 
-**Query Markup Documents**
+**通过所有机器人检测测试的隐身浏览器**。在 Chromium C++ 源码层面打了 58 个指纹补丁，是 Playwright 的即插即用替代品。30/30 测试全部通过。
 
-QMD 是一款**本地混合搜索引擎**，专为 Markdown 文件、文档库、知识库、会议笔记等设计。所有操作均在本地运行，无需联网，无需云端服务。
-
-> Fork 自 [tobi/qmd](https://github.com/tobi/qmd)，原作者：Tobi Lutke（Shopify 创始人）
-
-[![CI](https://github.com/tobi/qmd/actions/workflows/ci.yml/badge.svg)](https://github.com/tobi/qmd/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/@tobilu/qmd)](https://www.npmjs.com/package/@tobilu/qmd)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+> Fork 自 [CloakHQ/CloakBrowser](https://github.com/CloakHQ/CloakBrowser)
+> 🌐 [官网](https://cloakbrowser.dev/)
 
 ---
 
 ## 目录
 
-- [简介](#简介)
+- [为什么需要 CloakBrowser](#为什么需要-cloakbrowser)
 - [核心特性](#核心特性)
-- [安装](#安装)
 - [快速开始](#快速开始)
-- [CLI 命令参考](#cli-命令参考)
-- [查询语法](#查询语法)
-- [搜索原理](#搜索原理)
-  - [三种检索后端](#三种检索后端)
-  - [搜索管道](#搜索管道)
-  - [评分融合策略](#评分融合策略)
-- [配置](#配置)
-- [MCP 服务器](#mcp-服务器)
-- [SDK / API 使用](#sdk--api-使用)
-- [输出格式](#输出格式)
-- [模型微调](#模型微调)
+- [安装](#安装)
+- [API 参考](#api-参考)
+  - [浏览器启动](#浏览器启动)
+  - [启动上下文](#启动上下文)
+  - [持久化配置](#持久化配置)
+  - [工具函数](#工具函数)
+- [CLI 命令](#cli-命令)
+- [拟人化行为](#拟人化行为)
+- [Docker 部署](#docker-部署)
+  - [cloakserve — CDP 多路复用器](#cloakserve--cdp-多路复用器)
+- [框架集成](#框架集成)
+- [平台支持](#平台支持)
+- [测试结果](#测试结果)
+- [许可说明](#许可说明)
 - [常见问题](#常见问题)
 
 ---
 
-## 简介
+## 为什么需要 CloakBrowser
 
-QMD 是一个**终端命令行本地搜索引擎**，让你可以用自然语言搜索本地 Markdown 文件。它结合了三种搜索技术：
+现有的无头浏览器反检测方案大多存在问题：
 
-- **BM25（全文检索）** — 关键词精确匹配，瞬间返回
-- **向量语义搜索** — 理解含义而非字面，找到概念相关的内容
-- **LLM 重排序** — 交叉编码器精排，获得最佳结果
+| 方案 | 问题 |
+|------|------|
+| `playwright-stealth`、`undetected-chromedriver` | 通过 JS 注入修改指纹，每次 Chrome 更新就失效 |
+| 指纹浏览器（Multilogin/GoLogin/AdsPower） | 商业闭源，成本高 |
 
-所有模型都在本地运行，自动从 HuggingFace 下载，无需 API Key，无需联网。
+**CloakBrowser 的不同之处：** 在 **Chromium C++ 源码级别**打了 58 个补丁，直接编译进浏览器二进制文件。它伪装成真正的 Google Chrome，在底层通过所有检测。
 
 ---
 
 ## 核心特性
 
-- **三合一搜索** — BM25 + 向量 + LLM 重排序，兼顾速度和精度
-- **完全本地** — 所有模型在本地运行，数据不出设备
-- **智能分块** — 文档自动分块（~900 tokens，15% 重叠），支持 AST 感知分块（代码文件）
-- **查询扩展** — LLM 自动扩展查询词，生成多种搜索变体
-- **MCP 服务器** — 支持 AI Agent 通过 MCP 协议搜索本地文档
-- **集合管理** — 按项目/主题组织文档集合
-- **多格式输出** — CLI 彩色输出、JSON、CSV、Markdown、XML
-- **Nix Flake** — 可复现构建
-
----
-
-## 安装
-
-### 前置要求
-
-- **Node.js** >= 22 或 **Bun** >= 1.0
-
-### 通过 npm 全局安装
-
-```bash
-npm install -g @tobilu/qmd
-```
-
-### 通过 npx 直接使用
-
-```bash
-npx @tobilu/qmd --help
-```
-
-### Nix Flake
-
-```bash
-nix run github:tobi/qmd
-```
+- **58 个源码级补丁** — Canvas、WebGL、Audio、Fonts、GPU、Screen、WebRTC 等指纹全覆盖
+- **即插即用** — Playwright/Puppeteer 的替代品，修改一行代码即可
+- **拟人化操作** — 贝塞尔曲线鼠标移动、逐字模拟键盘输入、自然滚动
+- **CDP 多路复用** — 单端口多指纹实例，每个连接可独立设置时区/语言/代理
+- **Docker 支持** — 预装浏览器，开箱即用
+- **双语言** — Python + TypeScript 完整支持
+- **自动更新** — 首次使用自动下载浏览器（~200MB），支持版本检测
 
 ---
 
 ## 快速开始
 
-### 1. 添加文档集合
+```python
+from cloakbrowser import launch
+
+browser = launch(headless=False)
+page = browser.new_page()
+page.goto("https://bot.sannysoft.com")
+page.screenshot(path="result.png")
+browser.close()
+```
+
+拟人化模式（鼠标/键盘/滚动更像真人）：
+
+```python
+from cloakbrowser import launch
+
+browser = launch(humanize=True)
+page = browser.new_page()
+page.goto("https://example.com")
+page.click("#submit")  # 贝塞尔曲线鼠标移动
+page.fill("#search", "hello")  # 逐字输入，偶尔打错
+browser.close()
+```
+
+---
+
+## 安装
+
+### Python
 
 ```bash
-# 添加一个 Obsidian 笔记目录
-qmd collection add /Users/me/obsidian --name notes
-
-# 添加项目文档
-qmd collection add /Users/me/my-project/docs --name my-project
+pip install cloakbrowser
 ```
 
-### 2. 生成向量索引
+### Node.js
 
 ```bash
-qmd embed
+npm install cloakbrowser
 ```
 
-首次运行会自动下载嵌入模型（~300MB）。
+首次导入时会自动下载 Chromium 浏览器到 `~/.cloakbrowser/`。
 
-### 3. 搜索
+---
+
+## API 参考
+
+### 浏览器启动
+
+#### `launch(headless=False, **kwargs)` / `launch_async()`
+
+启动隐身浏览器，返回 Playwright `Browser` 实例。
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `headless` | bool | `False` | 是否无头模式 |
+| `humanize` | bool | `False` | 启用拟人化行为 |
+| `human_config` | dict | `None` | 拟人化参数配置 |
+| `proxy` | dict/str | `None` | 代理配置（支持 HTTP/SOCKS5） |
+| `extension_paths` | list | `None` | Chrome 扩展路径列表 |
+| `geoip` | bool | `False` | 根据代理 IP 自动设置时区和语言 |
+| `disable_web_security` | bool | `False` | 禁用 Web 安全策略 |
+| `extra_args` | list | `None` | 额外的 Chrome CLI 参数 |
+
+```python
+browser = launch(
+    humanize=True,
+    proxy={"server": "http://user:pass@host:port"},
+    geoip=True,
+)
+```
+
+---
+
+### 启动上下文
+
+#### `launch_context(**kwargs)` / `launch_context_async()`
+
+一步完成浏览器启动 + 上下文创建，支持直接设置 viewport/UA/时区/语言。
+
+```python
+context, browser = launch_context(
+    viewport={"width": 1920, "height": 1080},
+    user_agent="Mozilla/5.0 ...",
+    timezone_id="Asia/Shanghai",
+    locale="zh-CN",
+)
+page = context.new_page()
+```
+
+---
+
+### 持久化配置
+
+#### `launch_persistent_context(user_data_dir, **kwargs)` / `launch_persistent_context_async()`
+
+使用持久化用户数据目录启动，保持登录态、Cookie、LocalStorage 跨会话。
+
+```python
+context = launch_persistent_context("./my-profile")
+page = context.new_page()
+# 登录...
+context.close()
+
+# 下次启动，登录态还在
+context = launch_persistent_context("./my-profile")
+```
+
+---
+
+### 工具函数
+
+| 函数 | 说明 |
+|------|------|
+| `ensure_binary()` | 下载并缓存 Chromium 浏览器 |
+| `clear_cache()` | 清除缓存的浏览器文件 |
+| `binary_info()` | 获取浏览器版本、路径、平台信息 |
+| `check_for_update()` | 检查是否有更新的浏览器版本 |
+
+---
+
+## CLI 命令
 
 ```bash
-# 混合搜索（推荐）
-qmd query "如何配置数据库连接"
+# 下载浏览器（首次使用）
+python -m cloakbrowser install
 
-# 关键词搜索
-qmd search "数据库连接池"
+# 查看版本信息
+python -m cloakbrowser info
 
-# 语义搜索
-qmd vsearch "数据库性能优化方法"
+# 检查更新
+python -m cloakbrowser update
+
+# 清除缓存
+python -m cloakbrowser clear-cache
 ```
 
-### 4. 查看索引状态
+---
+
+## 拟人化行为
+
+`humanize=True` 启用三层真人模拟：
+
+| 模块 | 行为 |
+|------|------|
+| **鼠标** | 贝塞尔曲线轨迹移动，非直线；click/hover/dblclick 均有自然轨迹 |
+| **键盘** | 逐字输入，间隔随机延迟（30~120ms）；偶尔打错字并自动修正 |
+| **滚动** | 加速→巡航→减速三段式滚动，符合人眼追踪规律 |
+
+### 预设
+
+```python
+# 默认模式（平衡速度和拟真度）
+browser = launch(humanize=True)
+
+# "认真"模式（更慢但更像人）
+browser = launch(humanize=True, human_config="careful")
+```
+
+### 自定义参数
+
+```python
+from cloakbrowser.human import HumanConfig
+
+config = HumanConfig(
+    typing_delay=(40, 100),      # 打字延迟范围 ms
+    mistype_chance=0.02,         # 打错字概率 2%
+    mouse_speed=0.8,             # 鼠标速度 0~1
+    scroll_step=50,              # 滚动步长 px
+)
+browser = launch(humanize=True, human_config=config)
+```
+
+---
+
+## Docker 部署
+
+预构建镜像，含完整的 Chromium + Xvfb 虚拟显示：
 
 ```bash
-qmd status
+# 运行隐身测试
+docker run --rm cloakhq/cloakbrowser cloaktest
+
+# 启动 CDP 服务器
+docker run -p 9222:9222 cloakhq/cloakbrowser cloakserve
 ```
 
----
+### cloakserve — CDP 多路复用器
 
-## CLI 命令参考
-
-### 搜索命令
-
-| 命令 | 说明 |
-|------|------|
-| `qmd query <query>` | **混合搜索** — BM25 + 向量 + 查询扩展 + LLM 重排序，质量最高 |
-| `qmd search <query>` | **关键词搜索** — 仅 BM25 FTS5 全文检索，速度最快 |
-| `qmd vsearch <query>` | **向量搜索** — 仅语义相似度搜索 |
-
-### 文档检索
-
-| 命令 | 说明 |
-|------|------|
-| `qmd get <path>[:line]` | 获取单篇文档（按路径或 docid，例如 `#abc123`） |
-| `qmd multi-get <pattern>` | 批量获取（支持 glob 或逗号分隔） |
-
-### 集合管理
-
-| 命令 | 说明 |
-|------|------|
-| `qmd collection add <path> --name <name>` | 添加/索引文档集合 |
-| `qmd collection list` | 列出所有集合 |
-| `qmd collection remove <name>` | 移除集合 |
-| `qmd collection rename <old> <new>` | 重命名集合 |
-| `qmd ls [collection[/path]]` | 列出集合中的文件 |
-
-### 上下文管理
-
-| 命令 | 说明 |
-|------|------|
-| `qmd context add [path] "text"` | 添加上下文描述 |
-| `qmd context list` | 列出所有上下文 |
-| `qmd context check` | 检查缺少上下文的集合 |
-| `qmd context rm <path>` | 移除上下文 |
-
-### 维护命令
-
-| 命令 | 说明 |
-|------|------|
-| `qmd embed` | 生成向量嵌入（首次必须运行） |
-| `qmd update [--pull]` | 重新索引所有集合 |
-| `qmd cleanup` | 清理孤立文件、清缓存、VACUUM |
-| `qmd doctor` | 系统健康检查 |
-| `qmd status` | 索引状态、集合信息、模型信息 |
-
-### MCP 服务器
-
-| 命令 | 说明 |
-|------|------|
-| `qmd mcp` | 启动 MCP 服务器（stdio 模式） |
-| `qmd mcp --http` | 启动 HTTP 模式 MCP 服务器 |
-| `qmd mcp --http --daemon` | 后台 HTTP 守护进程 |
-| `qmd mcp stop` | 停止后台守护进程 |
-
-### 基准测试 & 技能
-
-| 命令 | 说明 |
-|------|------|
-| `qmd bench <fixture>` | 运行基准测试查询 |
-| `qmd skill show` | 显示 AI Agent 使用的 QMD 技能 |
-| `qmd skill install` | 安装技能到 `.agents/skills/qmd` |
-
----
-
-## 查询语法
-
-QMD 支持结构化查询文档，每行以类型前缀开头：
-
-| 类型前缀 | 说明 | 示例 |
-|---------|------|------|
-| `lex:` | BM25 关键词搜索（支持引号精确匹配和 `-` 排除） | `lex: 数据库连接池 -MySQL` |
-| `vec:` | 语义向量搜索（自然语言问题） | `vec: 什么是依赖注入？` |
-| `hyde:` | 假设性文档嵌入（用想象的理想文档做向量匹配） | `hyde: 本文解释了数据库索引的原理...` |
-| `intent:` | 领域消歧上下文（可选） | `intent: 这是一个 Node.js 后端项目` |
-| `expand:` | 让 LLM 自动扩展查询 | `expand: 数据库连接池` |
-
-### 示例
+单端口管理多个浏览器实例，每个连接独立指纹：
 
 ```bash
-# 结构化查询
-qmd query "lex: 连接池配置
-vec: 如何优化数据库连接
-intent: Node.js 后端项目"
-
-# 使用引号精确匹配
-qmd query 'lex: "connection pool"'
-
-# 排除关键词
-qmd query "lex: 缓存 -Redis"
+docker run -p 9222:9222 cloakhq/cloakbrowser cloakserve
 ```
+
+通过 WebSocket 连接，支持查询参数设置指纹：
+
+```
+ws://localhost:9222/devtools?fingerprint=myseed&timezone=Asia/Shanghai&locale=zh-CN
+```
+
+支持的参数：
+
+| 参数 | 说明 |
+|------|------|
+| `fingerprint` | 指纹种子（连接复用，相同种子共享实例） |
+| `timezone` | 时区（如 `Asia/Shanghai`） |
+| `locale` | 语言（如 `zh-CN`） |
+| `platform` | 操作系统（`linux`、`macos`、`windows`） |
+| `proxy` | 代理地址 |
+| `gpu-vendor` | GPU 厂商 |
+| `screen-width` / `screen-height` | 屏幕分辨率 |
+| `hardware-concurrency` | CPU 核心数 |
+| `device-memory` | 设备内存 GB |
+
+内置健康检查：`GET http://localhost:9222/` 返回进程状态 JSON。
 
 ---
 
-## 搜索原理
+## 框架集成
 
-### 三种检索后端
+CloakBrowser 可与以下框架无缝集成：
 
-| 后端 | 方法 | 速度 | 适用场景 |
-|------|------|------|---------|
-| **BM25 (FTS5)** | SQLite FTS5 关键词匹配 | 瞬间 | 精确术语、名称、代码符号 |
-| **向量搜索** | sqlite-vec 语义相似度 | 快（嵌入后） | 概念、含义搜索 |
-| **重排序** | 交叉编码器 LLM（Qwen3-Reranker） | 慢（LLM 推理） | 最佳质量，位置感知混合 |
-
-### 搜索管道
-
-```
-用户查询
-  ├─ BM25 探测 ── 信号足够强？ ── 跳过扩展
-  ├─ LLM 查询扩展 ── 生成 lex/vec/hyde 变体
-  ├─ 并行搜索：每个变体同时跑 FTS + 向量
-  ├─ RRF 融合（k=60，原始查询 2x 权重，排名加分）
-  ├─ 取 Top 30 候选 ── 分块文档
-  ├─ LLM 重排序（按块）
-  └─ 位置感知混合 ── 最终结果
-```
-
-### 评分融合策略
-
-**RRF 融合公式：**
-```
-score = sum(1 / (k + rank + 1))
-```
-- `k = 60`
-- Top 排名加分：第 1 名 +0.05，第 2~3 名 +0.02
-- 原始查询列表权重为 2x
-
-**位置感知混合（检索分数 vs 重排序分数）：**
-
-| RRF 排名 | 检索占比 | 重排序占比 |
-|----------|---------|-----------|
-| 1~3 | 75% | 25% |
-| 4~10 | 60% | 40% |
-| 11+ | 40% | 60% |
+| 框架 | 连接方式 | 文档 |
+|------|---------|------|
+| **Playwright** | 直接替代（一行代码修改） | — |
+| **Puppeteer** | 直接替代 | `examples/integrations/` |
+| **browser-use** | CDP 端口 9242 | `examples/integrations/browser_use_example.py` |
+| **Crawl4AI** | CDP 端口 9243 | `examples/integrations/crawl4ai_example.py` |
+| **Crawlee** | 自定义 Plugin 替换 Chromium | `examples/integrations/crawlee_example.py` |
+| **Scrapling** | CDP WebSocket URL | `examples/integrations/scrapling_example.py` |
+| **Selenium** | ChromeDriver 指定二进制路径 | `examples/integrations/selenium_example.py` |
+| **LangChain** | 自定义 Document Loader | `examples/integrations/langchain_loader.py` |
+| **Stagehand** | npm 包 `stagehand` + 自定义 launch | `js/examples/stagehand.ts` |
+| **AgentBrowser** | 环境变量指定路径 | `examples/integrations/agent_browser.sh` |
+| **AWS Lambda** | 容器镜像运行 | `examples/integrations/aws_lambda/` |
 
 ---
 
-## 配置
+## 平台支持
 
-### 配置文件位置
+| 平台 | 架构 | Chromium 版本 | 补丁数 | 状态 |
+|------|------|--------------|--------|------|
+| Linux | x86_64 | 146 | 58 | ✅ 最新 |
+| Linux | arm64 (RPi/Graviton) | 146 | 58 | ✅ 最新 |
+| macOS | arm64 (Apple Silicon) | 145 | 26 | ✅ |
+| macOS | x86_64 (Intel) | 145 | 26 | ✅ |
+| Windows | x86_64 | 146 | 58 | ✅ 最新 |
 
-QMD 的 YAML 配置文件位于：
-
-- **全局配置：** `~/.config/qmd/index.yml`
-- **项目配置：** `.qmd/index.yaml`（项目目录下）
-
-### 示例配置
-
-```yaml
-# example-index.yml
-collections:
-  - name: my-docs
-    path: /path/to/docs
-    glob: "**/*.md"           # 文件匹配模式
-    ignore: ["node_modules"]  # 忽略目录
-```
+Nix/NixOS 支持：提供 `flake.nix`，可直接 `nix run`。
 
 ---
 
-## MCP 服务器
+## 测试结果
 
-QMD 提供 MCP（Model Context Protocol）服务器，让 AI Agent（如 Claude Code）可以直接搜索你的本地文档。
+与普通 Playwright 的对比：
 
-### 启动
-
-```bash
-# stdio 模式（默认，供 Agent 使用）
-qmd mcp
-
-# HTTP 模式（供其他程序调用）
-qmd mcp --http
-
-# 后台守护进程
-qmd mcp --http --daemon
-```
-
-HTTP 模式下，模型会保持在显存中，5 分钟无请求后自动释放。
-
-### 暴露的工具
-
-MCP 服务器提供 4 个工具：
-
-1. **`query`** — 结构化搜索（支持 lex/vec/hyde + intent）
-2. **`get`** — 文档检索（按路径或 docid，含模糊建议）
-3. **`multi_get`** — 批量文档检索
-4. **`status`** — 索引健康状态
-
-### REST API
-
-HTTP 模式下提供 REST 端点：
-
-```
-POST http://localhost:8181/query
-Content-Type: application/json
-
-{ "query": "搜索内容" }
-```
+| 检测项 | Playwright | CloakBrowser |
+|--------|-----------|-------------|
+| reCAPTCHA v3 得分 | 0.1（机器人） | **0.9（人类）** |
+| Cloudflare Turnstile | ❌ 失败 | ✅ 通过 |
+| FingerprintJS | ❌ 检测到 | ✅ 通过 |
+| BrowserScan | ❌ 检测到 | ✅ 正常 |
+| bot.incolumitas.com | 13 项失败 | **1 项失败** |
+| deviceandbrowserinfo.com | 6 项异常 | **0 项异常** |
+| navigator.webdriver | `true` | **`false`**（源码补丁） |
+| TLS 指纹 | 不匹配 | **与 Chrome 一致** |
 
 ---
 
-## SDK / API 使用
+## 许可说明
 
-QMD 也可以作为 Node.js 库使用：
+CloakBrowser 采用双重许可：
 
-```bash
-npm install @tobilu/qmd
-```
+**包装代码（Python/JS 库）：** MIT 许可
+- 可自由使用、修改、分发
 
-```typescript
-import { createStore, type QMDStore } from '@tobilu/qmd'
-
-const store = await createStore({
-  dbPath: './index.sqlite',
-  config: { /* YAML 配置 */ }
-})
-
-// 搜索
-const results = await store.search({
-  query: "搜索关键词"
-})
-
-// 关闭
-await store.close()
-```
-
----
-
-## 输出格式
-
-所有搜索命令均支持多种输出格式：
-
-| 参数 | 格式 | 说明 |
-|------|------|------|
-| （默认） | CLI | 终端彩色输出，带语法高亮 |
-| `--json` | JSON | 结构化 JSON 输出 |
-| `--csv` | CSV | 表格形式 |
-| `--md` | Markdown | Markdown 格式 |
-| `--xml` | XML | XML 格式 |
-| `--files` | 文件列表 | 仅输出文件路径 |
-
----
-
-## 模型
-
-QMD 自动从 HuggingFace 下载以下模型（缓存到 `~/.cache/qmd/models/`）：
-
-| 模型 | 用途 | 大小 | 来源 |
-|------|------|------|------|
-| EmbeddingGemma 300M (Q8_0) | 向量嵌入 | ~300 MB | `hf:ggml-org/embeddinggemma-300M-GGUF` |
-| Qwen3-Reranker 0.6B (Q8_0) | 交叉编码器重排序 | ~640 MB | `hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF` |
-| QMD Query Expansion 1.7B (Q4_K_M) | 查询扩展（微调版） | ~1.1 GB | `hf:tobil/qmd-query-expansion-1.7B-gguf` |
-
-首次运行 `qmd embed` 或 `qmd query` 时自动下载。
-
-嵌入模型可通过环境变量 `QMD_EMBED_MODEL` 覆盖。
-
----
-
-## 模型微调
-
-`finetune/` 目录包含完整的查询扩展模型微调管线：
-
-- **SFT**（监督微调）：基于 Qwen3-1.7B，LoRA rank 16，约 2290 条标注数据
-- **奖励函数**：5 维度评分（格式 30pt、多样性 30pt、HyDE 20pt、质量 20pt、实体保留 20pt ~ -65pt）
-- **转换**：训练后转换为 GGUF 格式本地部署
-- **评估**：平均得分 92.0%
-
-详见 [finetune/README.md](finetune/README.md)。
+**编译的 Chromium 二进制文件：** Binary License
+- **个人和商业免费** — 无需付费
+- 不可重新分发、转售、逆向工程
+- 内部使用（Docker、CI 等）允许
+- OEM/SaaS 嵌入分发需要商业许可
+- 基于 ungoogled-chromium，无遥测
+- 联系 `cloakhq@pm.me` 获取 OEM/SaaS 许可
 
 ---
 
 ## 常见问题
 
-**Q: 首次搜索很慢？**
+**Q: 和 undetected-chromedriver 有什么区别？**
 
-首次运行需要下载模型（共约 2GB），取决于网络速度。后续搜索模型已缓存。
+undetected-chromedriver 通过 JS 注入修改指纹，CloakBrowser 在 Chromium C++ 源码层修改，更底层、更稳定、更隐蔽。
 
-**Q: 如何只搜索关键词不要语义搜索？**
+**Q: 首次运行需要下载什么？**
 
-使用 `qmd search` 命令，仅 BM25 全文检索，无需模型。
+首次 `import cloakbrowser` 时会自动下载 Chromium 浏览器（~200MB）到 `~/.cloakbrowser/`。
 
-**Q: 如何让 AI Agent 使用 QMD？**
+**Q: 支持 Selenium 吗？**
 
-启动 MCP 服务器后，在 Agent 配置中添加 MCP 工具即可。也可使用 `qmd skill install` 安装技能。
+支持。参考 `examples/integrations/selenium_example.py`。
 
-**Q: 数据存储在哪里？**
+**Q: 生产环境推荐怎么用？**
 
-- SQLite 索引：`~/.cache/qmd/index.sqlite`
-- 模型缓存：`~/.cache/qmd/models/`
-- 配置文件：`~/.config/qmd/index.yml`
+推荐使用 Docker 部署 `cloakhq/cloakbrowser` + `cloakserve` 做 CDP 多路复用，每连接独立指纹。
 
----
+**Q: reCAPTCHA v3 得分低怎么办？**
 
-## 许可
-
-[MIT](LICENSE)
+- 使用 `humanize=True`
+- 配置高质量住宅代理
+- 使用持久化用户目录（`launch_persistent_context`）
+- 安装 Linux 字体包（Kasada/Akamai 检测字体指纹）
 
 ---
 
 <div align="center">
 
-**QMD** — 让本地文档也能被智能搜索
+**CloakBrowser** — 让自动化浏览器隐形
 
 </div>
